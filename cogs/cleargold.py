@@ -5,7 +5,7 @@ import json
 import os
 import tempfile
 
-OWNER_ID = 1188894271894462514
+from core.config import EGG_ID
 
 # 봇 소스 위치(EGG-BOT/) 기준 절대경로로 고정
 _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # .../EGG-BOT
@@ -63,7 +63,7 @@ DIFF_ORDER = {
 
 
 def is_owner(interaction: discord.Interaction) -> bool:
-    return interaction.user.id == OWNER_ID
+    return interaction.user.id == EGG_ID
 
 
 # =========================

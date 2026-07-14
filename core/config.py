@@ -43,3 +43,14 @@ SERVER_LIST = [
 STICKER_WEBHOOK_NAME = "Egg Sticker Relay"
 STICKER_USERNAME_SUFFIX = " · Egg"
 NO_RESIZE_KEYS = set()
+
+# 봇 소유자(계란) 디스코드 사용자 ID. .env의 EGG_ID 값을 읽어옴.
+_egg_id_raw = os.getenv("EGG_ID", "").strip()
+try:
+    EGG_ID = int(_egg_id_raw) if _egg_id_raw else 0
+except ValueError:
+    print(f"⚠️ EGG_ID 값이 올바른 숫자가 아니에요: {_egg_id_raw!r} -> 0으로 처리합니다.")
+    EGG_ID = 0
+
+if EGG_ID == 0:
+    print("⚠️ .env에 EGG_ID가 설정되어 있지 않아요. 계란 전용 명령어가 아무에게도 허용되지 않습니다.")

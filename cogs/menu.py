@@ -4,11 +4,11 @@ from discord import app_commands
 import random
 from pathlib import Path
 
-OWNER_ID = 1188894271894462514
+from core.config import EGG_ID
 
 
 def is_owner(interaction: discord.Interaction) -> bool:
-    return interaction.user.id == OWNER_ID
+    return interaction.user.id == EGG_ID
 
 
 # =========================

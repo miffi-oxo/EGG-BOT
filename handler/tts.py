@@ -604,8 +604,7 @@ async def _naver_tts_mp3(text: str) -> Tuple[Optional[bytes], Optional[str]]:
             return None, "읽을 수 있는 텍스트가 없어요."
         try:
             from navertts import NaverTTS  # type: ignore
-        except Exception as e:
-            logger.warning("[TTS] navertts import 실패: %r", e)
+        except Exception:
             return None, "Engine 1 이 작동하지 않아요."
         content = text.strip()
         if not content:

@@ -185,3 +185,9 @@ imageio-ffmpeg>=0.5.0
 
 - `계란 전용` 명령어는 `.env`의 `EGG_ID`(봇 소유자 디스코드 ID)와 명령어 실행자 ID를 비교하는 방식으로 권한을 체크합니다 (`core/config.py`에서 로드, `cogs/cleargold.py`·`cogs/menu.py`에서 사용).
 - `관리자` 권한 명령어는 해당 서버의 관리자(Administrator) 권한을 가진 사용자만 사용할 수 있습니다.
+
+---
+
+## 🙏 참고
+
+TTS 관련 코드는 [MococoBot](https://github.com/Over-N/MococoBot/)을 참고했습니다.

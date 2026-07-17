@@ -442,8 +442,8 @@ def clean_message_for_tts(text: str) -> str:
     text = _RE_EMOJI.sub("", text)
     text = _RE_MD.sub("", text)
     text = _RE_SP.sub(" ", text.strip())
-    text = _normalize_korean_initialisms(text)
     text = _normalize_laughter(text)
+    text = _normalize_korean_initialisms(text)
     if len(text) > MAX_MESSAGE_LENGTH:
         text = text[:MAX_MESSAGE_LENGTH] + "..."
     return text

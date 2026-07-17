@@ -190,4 +190,4 @@ imageio-ffmpeg>=0.5.0
 
 ## 🙏 참고
 
-TTS 관련 코드는 [MococoBot](https://github.com/Over-N/MococoBot/)을 참고했습니다.
+TTS, 레이드 일정 관련 코드는 [MococoBot](https://github.com/Over-N/MococoBot/)을 참고했습니다.

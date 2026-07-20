@@ -425,7 +425,9 @@ def _normalize_korean_initialisms(text: str) -> str:
 
     out = pattern.sub(_repl, text)
 
-    if re.fullmatch(r"[ㄱ-ㅎ\s]+", out):
+    # 전부 자음(초성)으로만 남으면 의미 없는 텍스트로 보고 지우지만,
+    # "ㅋㅋㅋ" 같은 순수 웃음소리는 지우지 않고 다음 단계(_normalize_laughter)로 넘김
+    if re.fullmatch(r"[ㄱ-ㅎ\s]+", out) and not re.fullmatch(r"[ㅋ\s]+", out):
         return ""
 
     return out
@@ -442,8 +444,8 @@ def clean_message_for_tts(text: str) -> str:
     text = _RE_EMOJI.sub("", text)
     text = _RE_MD.sub("", text)
     text = _RE_SP.sub(" ", text.strip())
-    text = _normalize_laughter(text)
     text = _normalize_korean_initialisms(text)
+    text = _normalize_laughter(text)
     if len(text) > MAX_MESSAGE_LENGTH:
         text = text[:MAX_MESSAGE_LENGTH] + "..."
     return text
@@ -615,7 +617,10 @@ async def _naver_tts_mp3(text: str) -> Tuple[Optional[bytes], Optional[str]]:
             return cached, None
         buf = io.BytesIO()
         tts = NaverTTS(content)
-        await asyncio.to_thread(tts.write_to_fp, buf)
+        try:
+            await asyncio.wait_for(asyncio.to_thread(tts.write_to_fp, buf), timeout=15.0)
+        except asyncio.TimeoutError:
+            return None, "Engine 1 응답이 너무 오래 걸려요. 잠시 후 다시 시도해주세요."
         mp3_bytes = buf.getvalue()
         if not mp3_bytes:
             return None, "TTS 데이터 생성에 실패했습니다."
@@ -654,12 +659,19 @@ async def _edge_tts_mp3(text: str, voice: str) -> Tuple[Optional[bytes], Optiona
             return cached, None
         communicate = edge_tts.Communicate(content, voice)
         audio_buf = bytearray()
-        try:
+
+        async def _stream_collect() -> None:
             async for message in communicate.stream():
                 if isinstance(message, dict) and message.get("type") == "audio" and message.get("data"):
                     audio_buf.extend(message["data"])
+
+        try:
+            await asyncio.wait_for(_stream_collect(), timeout=15.0)
         except asyncio.CancelledError:
             raise
+        except asyncio.TimeoutError:
+            logger.warning("[TTS] edge_tts stream timed out")
+            audio_buf = bytearray()
         except Exception as e:
             logger.warning("[TTS] edge_tts stream failed: %s", e)
             audio_buf = bytearray()
@@ -669,7 +681,10 @@ async def _edge_tts_mp3(text: str, voice: str) -> Tuple[Optional[bytes], Optiona
                 with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmpf:
                     tmp_fn = tmpf.name
                 communicate = edge_tts.Communicate(content, voice)
-                await communicate.save(tmp_fn)
+                try:
+                    await asyncio.wait_for(communicate.save(tmp_fn), timeout=15.0)
+                except asyncio.TimeoutError:
+                    return None, "Engine 응답이 너무 오래 걸려요. 잠시 후 다시 시도해주세요."
                 if not os.path.exists(tmp_fn) or os.path.getsize(tmp_fn) == 0:
                     return None, "TTS 데이터 생성에 실패했습니다."
                 with open(tmp_fn, "rb") as f:
@@ -1737,13 +1752,22 @@ async def handle_tts_message(message: discord.Message) -> None:
         item: Optional[PlayItem] = None
         err: Optional[str] = None
         sem = _get_gen_sem(gid)
-        async with sem:
-            if guild_custom_key:
-                item, err = await _build_play_item_for_guild_custom(gid, guild_custom_key)
-            elif global_custom_key:
-                item, err = await _build_play_item_for_global_custom(global_custom_key)
-            else:
-                item, err = await _build_play_item_for_text(message, clean_text or "")
+        try:
+            async with sem:
+                if guild_custom_key:
+                    item, err = await asyncio.wait_for(
+                        _build_play_item_for_guild_custom(gid, guild_custom_key), timeout=30.0
+                    )
+                elif global_custom_key:
+                    item, err = await asyncio.wait_for(
+                        _build_play_item_for_global_custom(global_custom_key), timeout=30.0
+                    )
+                else:
+                    item, err = await asyncio.wait_for(
+                        _build_play_item_for_text(message, clean_text or ""), timeout=30.0
+                    )
+        except asyncio.TimeoutError:
+            item, err = None, "TTS 생성이 너무 오래 걸려서 취소했어요. 잠시 후 다시 시도해주세요."
         if not item:
             if err and ("읽을 수 있는 텍스트" not in err):
                 await send_error_embed(message.channel, "TTS 생성 실패", err or "알 수 없는 오류가 발생했어요. 관리자에게 문의해주세요.")
